@@ -1,0 +1,155 @@
+---
+title: "PwC Case Comp Notebook"
+author: "Team 1"
+date: "11/5/2021"
+output: html_document
+---
+
+Hint: Consider prevaxcination data vs post vaccination data
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+install.packages("tidyverse", "readxl","corrplot")
+install.packages("rpart")
+install.packages("MASS")
+install.packages("cluster")
+install.packages("caTools")
+install.packages("caret")
+install.packages("leaps")
+
+
+```
+
+
+
+```{r packages, include=FALSE}
+
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(MASS)
+library(rpart)
+library(caTools)
+library(rpart.plot)
+library(caret)
+library(leaps)
+
+```
+
+```{r data cleaning}
+active_comp_names <- as.data.frame(read_excel("active comp.xlsx"))
+starter_raw <- as.data.frame(read_excel("Starter Screen.xlsx"))
+Final_raw <- as.data.frame(read_excel("Final Data.xlsx"))
+
+Final_v2 <-as.data.frame(read_excel("pwc.xlsx"))
+
+sample <- sample.split(Final_df$`Oper Income`, SplitRatio = .75)
+train_data <- subset(Final_df, sample == T)
+test_data <- subset(Final_df, sample == F)
+
+```
+
+
+Predictor: Operation Income
+```{r data set up}
+Final_df <- Final_raw %>%
+              mutate_all(~replace(., is.na(.), 0))
+cor(Final_df$`Oper Income`, Final_df$Sales)
+    #Strong Correlations 
+    
+cor(Final_df$`Oper Income`, Final_df$`Inven Turnovr`)
+    #Strong 
+cor(Final_df$Sales, Final_df$`FE Growth Sales Mean FQ1 Roll Over -1AW`)
+cor(Final_df$`Oper Income`, Final_df$`Net Cash Flow -Oper`)
+
+cor(Final_df$Sales, Final_df$`Oper Income`)
+cor(Final_df$Sales, Final_df$`Current Ratio`)
+cor(Final_df$`Oper Income`, Final_df$`Quick Ratio`)
+
+
+```
+
+Chi Square:
+Anova:
+Correlations:
+```{r descriptive analyitcs}
+
+
+```
+
+
+Linear vs Log
+Classification tree vs Regression Tree
+
+
+Operation income be our dependant variables 
+```{r models}
+
+full.model.final <- lm(`Oper Income` ~ `Current Ratio` + `Inven Turnovr` + `Net Cash Flow -Oper` + `Quick Ratio`, data = Final_df)
+summary(lm(`Oper Income` ~ `Net Cash Flow -Oper`, data = Final_df))
+
+full_tree <- rpart(`Oper Income` ~ `Net Income Margin` + `Inven Turnovr`, data = Final_df)
+
+summary(lm(`Oper Income` ~  `Inven Turnovr` , data = Final_df))
+  #We omit sales 
+
+summary(lm(`Oper Income` ~  `Inven Turnovr` + Sales, data = Final_df))
+
+summary(lm(`Closing Price` ~ `Oper Income` + `Net Income Margin` + `Net Cash Flow -Inv`  , data = Final_df))
+
+closing_price_model <- lm(`Closing Price` ~ `Oper Income` + `Net Income Margin` + `Net Cash Flow -Inv`  , data = Final_df)
+
+op_income_model <- lm(`Oper Income` ~  `Inven Turnovr` , data = Final_df)
+
+Final_df <- Final_df %>% 
+  mutate(predict_stock_price = predict(closing_price_model, newdata = Final_df),
+         predict_op_income = predict(op_income_model, newdata = Final_df),
+         predict_op_w_sales = predict(lm(`Oper Income` ~  `Inven Turnovr` + Sales, data = Final_df), newdata = Final_df),
+         dif_stock_price = `Oper Income` - predict_stock_price,
+         dif_op_income = `Closing Price` - predict_op_income)  
+```
+
+
+
+```{r visualizations, echo=FALSE}
+
+Final_df %>% 
+  ggplot(aes(y = `Oper Income`, x = predict_op_income)) +
+    geom_point() +
+    geom_abline() +
+    geom_point(colour = "Red") +
+    geom_abline(colour = "Black") +
+    labs(title = "Operating Income versus Predicted Operating Income", 
+         subtitle = "Adjusted R-squared:  0.2054  \np-value: 0.003222") + 
+    theme_bw() + 
+    ylab("Predicted Operating Income") + 
+    xlab("Operating Income")
+
+Final_df %>% 
+  ggplot(aes(y = `Closing Price`, x = predict_stock_price)) +
+    geom_point(colour = "Red") +
+    geom_abline(colour = "Black") +
+    labs(title = "Closing Stock Price versus Predicted Stock Price", 
+         subtitle = "Adjusted R-squared:  0.1887 \np-value: 0.02128") + 
+    theme_bw() + 
+    xlab("Predicted Closing Price")
+
+Final_df %>% 
+  ggplot(aes(y = `Oper Income`, x = predict_op_w_sales)) +
+    geom_point() +
+    geom_abline() +
+    geom_point(colour = "Red") +
+    geom_abline(colour = "Black") +
+    labs(title = "Operating Income versus Predicted Operating Income with Sales", 
+         subtitle = "Adjusted R-squared:  0.934  \np-value: < 2.2e-16") + 
+    theme_bw() + 
+    xlab("Predicted Operating Income") + 
+    ylab("Operating Income")
+
+```
+
+```{r Regression Tree}
+
+
+```
